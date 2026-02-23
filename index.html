@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pure JSON Tree Viewer</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: monospace;
+    display: flex;
+    height: 100vh;
+}
+
+#left {
+    width: 50%;
+    border-right: 1px solid #ccc;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+#right {
+    width: 50%;
+    padding: 10px;
+    overflow: auto;
+    box-sizing: border-box;
+}
+
+textarea {
+    width: 100%;
+    height: calc(100% - 40px);
+    resize: none;
+    font-family: monospace;
+    font-size: 14px;
+}
+
+button {
+    padding: 6px 12px;
+    margin-right: 5px;
+    cursor: pointer;
+}
+
+.node {
+    margin-left: 20px;
+}
+
+.toggle {
+    cursor: pointer;
+    font-weight: bold;
+    margin-right: 5px;
+    color: #444;
+}
+
+.key {
+    color: brown;
+}
+
+.string { color: green; }
+.number { color: blue; }
+.boolean { color: purple; }
+.null { color: gray; }
+
+.hidden {
+    display: none;
+}
+
+#error {
+    color: red;
+    margin-bottom: 10px;
+}
+</style>
+</head>
+<body>
+
+<div id="left">
+    <div>
+        <button onclick="formatJSON()">Format</button>
+        <button onclick="expandAll()">Expand All</button>
+        <button onclick="collapseAll()">Collapse All</button>
+    </div>
+    <textarea id="jsonInput" placeholder="Paste JSON here..."></textarea>
+</div>
+
+<div id="right">
+    <div id="error"></div>
+    <div id="tree"></div>
+</div>
+
+<script>
+const input = document.getElementById("jsonInput");
+const treeContainer = document.getElementById("tree");
+const errorDiv = document.getElementById("error");
+
+input.addEventListener("input", () => {
+    try {
+        const json = JSON.parse(input.value);
+        errorDiv.textContent = "";
+        renderTree(json);
+    } catch (e) {
+        errorDiv.textContent = "Invalid JSON";
+        treeContainer.innerHTML = "";
+    }
+});
+
+function formatJSON() {
+    try {
+        const json = JSON.parse(input.value);
+        input.value = JSON.stringify(json, null, 2);
+        renderTree(json);
+        errorDiv.textContent = "";
+    } catch (e) {
+        errorDiv.textContent = "Invalid JSON";
+    }
+}
+
+function renderTree(data) {
+    treeContainer.innerHTML = "";
+    treeContainer.appendChild(createNode(data));
+}
+
+function createNode(value, keyLabel) {
+
+    // Primitive value → inline
+    if (typeof value !== "object" || value === null) {
+        const wrapper = document.createElement("div");
+
+        if (keyLabel !== undefined) {
+            const keySpan = document.createElement("span");
+            keySpan.className = "key";
+            keySpan.textContent = keyLabel + ": ";
+            wrapper.appendChild(keySpan);
+        }
+
+        const span = document.createElement("span");
+        span.textContent = JSON.stringify(value);
+
+        if (typeof value === "string") span.className = "string";
+        else if (typeof value === "number") span.className = "number";
+        else if (typeof value === "boolean") span.className = "boolean";
+        else if (value === null) span.className = "null";
+
+        wrapper.appendChild(span);
+        return wrapper;
+    }
+
+    // Object or Array → block
+    const container = document.createElement("div");
+    const isArray = Array.isArray(value);
+
+    // First line: [key: ] ▼ { or [
+    const firstLine = document.createElement("div");
+    firstLine.style.display = "flex";
+    firstLine.style.alignItems = "center";
+
+    if (keyLabel !== undefined) {
+        const keySpan = document.createElement("span");
+        keySpan.className = "key";
+        keySpan.textContent = keyLabel + ": ";
+        firstLine.appendChild(keySpan);
+    }
+
+    const toggle = document.createElement("span");
+    toggle.textContent = "▼";
+    toggle.className = "toggle";
+    firstLine.appendChild(toggle);
+
+    const bracket = document.createElement("span");
+    bracket.textContent = isArray ? "[" : "{";
+    firstLine.appendChild(bracket);
+
+    const closing = document.createElement("div");
+    closing.textContent = isArray ? "]" : "}";
+    closing.style.marginLeft = "0px";
+
+    const content = document.createElement("div");
+    content.className = "node";
+
+    toggle.onclick = () => {
+        content.classList.toggle("hidden");
+        closing.classList.toggle("hidden");
+        toggle.textContent = content.classList.contains("hidden") ? "▶" : "▼";
+    };
+
+    container.appendChild(firstLine);
+    container.appendChild(content);
+    container.appendChild(closing);
+
+    if (isArray) {
+        value.forEach((item) => {
+            const child = createNode(item);
+            content.appendChild(child);
+        });
+    } else {
+        Object.keys(value).forEach(key => {
+            const child = createNode(value[key], key);
+            content.appendChild(child);
+        });
+    }
+
+    return container;
+}
+
+function expandAll() {
+    document.querySelectorAll(".node").forEach(node => {
+        node.classList.remove("hidden");
+    });
+    document.querySelectorAll(".toggle").forEach(t => {
+        t.textContent = "▼";
+    });
+    document.querySelectorAll(".node + div").forEach(closing => {
+        closing.classList.remove("hidden");
+    });
+}
+
+function collapseAll() {
+    document.querySelectorAll(".node").forEach(node => {
+        node.classList.add("hidden");
+    });
+    document.querySelectorAll(".toggle").forEach(t => {
+        t.textContent = "▶";
+    });
+}
+</script>
+
+</body>
+</html>
