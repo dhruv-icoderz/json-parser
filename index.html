@@ -118,7 +118,7 @@ function renderTree(data) {
     treeContainer.appendChild(createNode(data));
 }
 
-function createNode(value, keyLabel) {
+function createNode(value, keyLabel, isLast = true) {
 
     // Primitive value → inline
     if (typeof value !== "object" || value === null) {
@@ -140,6 +140,11 @@ function createNode(value, keyLabel) {
         else if (value === null) span.className = "null";
 
         wrapper.appendChild(span);
+
+        if (!isLast) {
+            wrapper.appendChild(document.createTextNode(","));
+        }
+
         return wrapper;
     }
 
@@ -147,7 +152,6 @@ function createNode(value, keyLabel) {
     const container = document.createElement("div");
     const isArray = Array.isArray(value);
 
-    // First line: [key: ] ▼ { or [
     const firstLine = document.createElement("div");
     firstLine.style.display = "flex";
     firstLine.style.alignItems = "center";
@@ -168,12 +172,14 @@ function createNode(value, keyLabel) {
     bracket.textContent = isArray ? "[" : "{";
     firstLine.appendChild(bracket);
 
-    const closing = document.createElement("div");
-    closing.textContent = isArray ? "]" : "}";
-    closing.style.marginLeft = "0px";
-
     const content = document.createElement("div");
     content.className = "node";
+
+    const closing = document.createElement("div");
+    closing.textContent = isArray ? "]" : "}";
+    if (!isLast) {
+        closing.appendChild(document.createTextNode(","));
+    }
 
     toggle.onclick = () => {
         content.classList.toggle("hidden");
@@ -186,20 +192,24 @@ function createNode(value, keyLabel) {
     container.appendChild(closing);
 
     if (isArray) {
-        value.forEach((item) => {
-            const child = createNode(item);
+        value.forEach((item, index) => {
+            const child = createNode(item, undefined, index === value.length - 1);
             content.appendChild(child);
         });
     } else {
-        Object.keys(value).forEach(key => {
-            const child = createNode(value[key], key);
+        const keys = Object.keys(value);
+        keys.forEach((key, index) => {
+            const child = createNode(
+                value[key],
+                key,
+                index === keys.length - 1
+            );
             content.appendChild(child);
         });
     }
 
     return container;
 }
-
 function expandAll() {
     document.querySelectorAll(".node").forEach(node => {
         node.classList.remove("hidden");
